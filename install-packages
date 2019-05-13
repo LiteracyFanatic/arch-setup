@@ -1,0 +1,58 @@
+#!/bin/bash
+set -e
+
+cores=$(grep -c ^processor /proc/cpuinfo)
+
+case $cores in
+    16)
+        MAKEFLAGS='MAKEFLAGS="-j17"'
+        COMPRESSXZ='COMPRESSXZ=(xz -c -T 16 -z -)'
+        ;;
+    8)
+        MAKEFLAGS='MAKEFLAGS="-j9"'
+        COMPRESSXZ='COMPRESSXZ=(xz -c -T 8 -z -)'
+        ;;
+    6)
+        MAKEFLAGS='MAKEFLAGS="-j7"'
+        COMPRESSXZ='COMPRESSXZ=(xz -c -T 6 -z -)'
+        ;;
+    4)
+        MAKEFLAGS='MAKEFLAGS="-j5"'
+        COMPRESSXZ='COMPRESSXZ=(xz -c -T 4 -z -)'
+        ;;
+    2)
+        MAKEFLAGS='MAKEFLAGS="-j3"'
+        COMPRESSXZ='COMPRESSXZ=(xz -c -T 2 -z -)'
+        ;;
+esac
+
+sudo sed -i "s/#MAKEFLAGS=\"-j2\"/${MAKEFLAGS}/g" /etc/makepkg.conf
+sudo sed -i "s/COMPRESSXZ=(xz -c -z -)/${COMPRESSXZ}/g" /etc/makepkg.conf
+
+sudo reflector -f 30 -l 30 --number 10 --verbose --save /etc/pacman.d/mirrorlist
+sudo pacman -Syyu --noconfirm
+yay -Syu --noconfirm
+
+sudo pacman -S --noconfirm --needed - < pkglist.txt
+
+sudo systemctl set-default graphical.target
+
+sudo systemctl enable bluetooth.service
+sudo systemctl start bluetooth.service
+
+sudo sed -i 's/'#AutoEnable=false'/'AutoEnable=true'/g' /etc/bluetooth/main.conf
+
+sudo systemctl enable org.cups.cupsd.service
+
+sudo wget "https://git.samba.org/samba.git/?p=samba.git;a=blob_plain;f=examples/smb.conf.default;hb=HEAD" -O /etc/samba/smb.conf.original
+
+sudo systemctl enable avahi-daemon.service
+sudo systemctl start avahi-daemon.service
+
+sudo sed -i 's/files mymachines myhostname/files mymachines/g' /etc/nsswitch.conf
+sudo sed -i 's/\[\!UNAVAIL=return\] dns/\[\!UNAVAIL=return\] mdns dns wins myhostname/g' /etc/nsswitch.conf
+
+sudo systemctl enable tlp.service
+sudo systemctl start tlp-sleep.service
+
+yay -S --noconfirm - < aurpkglist.txt

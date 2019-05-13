@@ -1,0 +1,7 @@
+pix-bin
+rstudio-desktop-bin
+octave-symbolic
+polybar
+google-chrome
+vivaldi
+visual-studio-code-bin
