@@ -33,7 +33,7 @@ sudo sed -i "s/COMPRESSXZ=(xz -c -z -)/${COMPRESSXZ}/g" /etc/makepkg.conf
 # sudo pacman -Syyu --noconfirm
 # yay -Syu --noconfirm
 
-sudo sed 's/^#.*$//' pkglist.txt | pacman -S --noconfirm --needed -
+sudo sed '/^#/d' pkglist.txt | pacman -S --noconfirm --needed -
 
 sudo systemctl set-default graphical.target
 
@@ -55,4 +55,4 @@ sudo sed -i 's/\[\!UNAVAIL=return\] dns/\[\!UNAVAIL=return\] mdns dns wins myhos
 sudo systemctl enable tlp.service
 sudo systemctl start tlp-sleep.service
 
-sed 's/^#.*$//' aurpkglist.txt | yay -S --no-confirm --needed -
+sed 's/^#/d' aurpkglist.txt | yay -S --no-confirm --needed -

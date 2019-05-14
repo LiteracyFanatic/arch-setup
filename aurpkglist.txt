@@ -1,5 +1,5 @@
 micro-bin
-pix-bin
+# pix-bin
 rstudio-desktop-bin
 octave-symbolic
 polybar
