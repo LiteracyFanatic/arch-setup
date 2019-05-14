@@ -1,5 +1,6 @@
 xorg
 xorg-xclipboard
+xclip
 wayland
 wayland-protocols
 xorg-server-xwayland
@@ -122,7 +123,7 @@ udisks2
 docker
 lxqt-runner
 xfce4-panel
-
+xfce4-terminal
 xfce4-appfinder
 xfce4-datetime-plugin
 xfce4-mount-plugin
