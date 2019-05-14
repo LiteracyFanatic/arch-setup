@@ -6,3 +6,6 @@ polybar
 google-chrome
 vivaldi
 visual-studio-code-bin
+shutter
+xfce4-volumed
+xfce4-statusnotifier-plugin

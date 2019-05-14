@@ -29,11 +29,11 @@ esac
 sudo sed -i "s/#MAKEFLAGS=\"-j2\"/${MAKEFLAGS}/g" /etc/makepkg.conf
 sudo sed -i "s/COMPRESSXZ=(xz -c -z -)/${COMPRESSXZ}/g" /etc/makepkg.conf
 
-sudo reflector -f 30 -l 30 --number 10 --verbose --save /etc/pacman.d/mirrorlist
-sudo pacman -Syyu --noconfirm
-yay -Syu --noconfirm
+# sudo reflector -f 30 -l 30 --number 10 --verbose --save /etc/pacman.d/mirrorlist
+# sudo pacman -Syyu --noconfirm
+# yay -Syu --noconfirm
 
-sudo pacman -S --noconfirm --needed - < pkglist.txt
+sudo sed 's/^#.*$//' pkglist.txt | pacman -S --noconfirm --needed -
 
 sudo systemctl set-default graphical.target
 
@@ -55,4 +55,4 @@ sudo sed -i 's/\[\!UNAVAIL=return\] dns/\[\!UNAVAIL=return\] mdns dns wins myhos
 sudo systemctl enable tlp.service
 sudo systemctl start tlp-sleep.service
 
-yay -S --noconfirm - < aurpkglist.txt
+sed 's/^#.*$//' aurpkglist.txt | yay -S --no-confirm --needed -

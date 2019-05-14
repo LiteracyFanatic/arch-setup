@@ -62,7 +62,8 @@ curl
 dconf-editor
 git
 gparted
-gvfs gvfs-mtp
+gvfs
+gvfs-mtp
 hddtemp
 htop
 kvantum-qt5
@@ -73,7 +74,7 @@ net-tools
 numlockx
 sane
 neofetch
-shutter
+
 simple-scan
 sysstat
 terminator
@@ -121,16 +122,16 @@ udisks2
 docker
 lxqt-runner
 xfce4-panel
-xfce4-volumed
+
 xfce4-appfinder
 xfce4-datetime-plugin
 xfce4-mount-plugin
 xfce4-power-manager
-xfce4-power-manager-plugins
+
 xfce4-pulseaudio-plugin
 xfce4-settings
 xfce4-notifyd
-xfce4-statusnotifier-plugin
+
 xfce4-whiskermenu-plugin
 nfs-utils
 shellcheck
@@ -142,7 +143,7 @@ nmap
 autorandr
 xcape
 dolphin
-pyhslock
+physlock
 python-pip
 ipython
 kvantum-qt5
