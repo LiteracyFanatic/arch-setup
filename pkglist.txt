@@ -6,7 +6,7 @@ wayland-protocols
 xorg-server-xwayland
 
 i3status
-i3-gaps
+# i3-gaps
 
 sway
 swaylock
@@ -159,3 +159,5 @@ uudeview
 arj
 cabextract
 file-roller
+pacgraph
+xed

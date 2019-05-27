@@ -1,5 +1,6 @@
 micro-bin
-# pix-bin
+i3-gaps-next-git
+pix
 rstudio-desktop-bin
 octave-symbolic
 polybar
@@ -9,3 +10,6 @@ visual-studio-code-bin
 shutter
 xfce4-volumed
 xfce4-statusnotifier-plugin
+etcher-bin
+bash-pipes
+
