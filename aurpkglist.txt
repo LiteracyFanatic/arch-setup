@@ -13,3 +13,4 @@ xfce4-statusnotifier-plugin
 etcher-bin
 bash-pipes
 
+peaclock

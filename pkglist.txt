@@ -147,7 +147,6 @@ dolphin
 physlock
 python-pip
 ipython
-kvantum-qt5
 pacman-contrib
 
 unace
@@ -161,3 +160,8 @@ cabextract
 file-roller
 pacgraph
 xed
+zsh
+gucharmap
+tty-clock
+python-pywal
+rofi
