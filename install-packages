@@ -28,8 +28,10 @@ case "$cores" in
         ;;
 esac
 
-sudo sed -i "s/#MAKEFLAGS=\"-j2\"/${MAKEFLAGS}/g" /etc/makepkg.conf
-sudo sed -i "s/COMPRESSXZ=(xz -c -z -)/${COMPRESSXZ}/g" /etc/makepkg.conf
+if [[ -v MAKEFLAGS ]]; then
+	sudo sed -i "s/#MAKEFLAGS=\"-j2\"/${MAKEFLAGS}/g" /etc/makepkg.conf
+	sudo sed -i "s/COMPRESSXZ=(xz -c -z -)/${COMPRESSXZ}/g" /etc/makepkg.conf
+fi
 
 sudo reflector -f 30 -l 30 --number 10 --verbose --save /etc/pacman.d/mirrorlist
 sudo pacman -Syyu --noconfirm
