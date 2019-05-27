@@ -1,9 +1,11 @@
 #!/bin/bash
 set -e
 
-cores=$(grep -c ^processor /proc/cpuinfo)
+script_dir="$(dirname "$(readlink -f "$0")")"
 
-case $cores in
+cores="$(grep -c ^processor /proc/cpuinfo)"
+
+case "$cores" in
     16)
         MAKEFLAGS='MAKEFLAGS="-j17"'
         COMPRESSXZ='COMPRESSXZ=(xz -c -T 16 -z -)'
@@ -29,9 +31,9 @@ esac
 sudo sed -i "s/#MAKEFLAGS=\"-j2\"/${MAKEFLAGS}/g" /etc/makepkg.conf
 sudo sed -i "s/COMPRESSXZ=(xz -c -z -)/${COMPRESSXZ}/g" /etc/makepkg.conf
 
-# sudo reflector -f 30 -l 30 --number 10 --verbose --save /etc/pacman.d/mirrorlist
-# sudo pacman -Syyu --noconfirm
-# yay -Syu --noconfirm
+sudo reflector -f 30 -l 30 --number 10 --verbose --save /etc/pacman.d/mirrorlist
+sudo pacman -Syyu --noconfirm
+yay -Syu --noconfirm
 
 sudo sed '/^#/d' pkglist.txt | pacman -S --noconfirm --needed -
 
@@ -55,4 +57,20 @@ sudo sed -i 's/\[\!UNAVAIL=return\] dns/\[\!UNAVAIL=return\] mdns dns wins myhos
 sudo systemctl enable tlp.service
 sudo systemctl start tlp-sleep.service
 
-sed 's/^#/d' aurpkglist.txt | yay -S --no-confirm --needed -
+sed 's/^#/d' "$script_dir/aurpkglist.txt" | yay -S --no-confirm --needed -
+
+font_dir="$HOME/.local/share/fonts"
+mkdir -p "$font_dir"
+
+tmp_dir="$(mktemp -d)"
+
+wget --directory-prefix "$tmp_dir" --input-file "$script_dir/font-urls"
+
+for file in "$tmp_dir"/*; do
+	font_name="$(basename "$file" .zip)"
+	unzip -d "$font_dir/$font_name" "$file"
+done
+
+rm -r "$tmp_dir"
+
+fc-cache -f
