@@ -1,5 +1,5 @@
 # arch-setup
-This is a system configuration script meant to be used after completing an installation of Arch Linux. Running it will do the following:
+This is a bash script meant to be used after completing an installation of Arch Linux. Running it will do the following:
 
 - Configure makepkg to use all available cores
 - Perform a full system upgrade
