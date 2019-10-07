@@ -8,7 +8,6 @@ google-chrome
 neovim-plug
 nerd-fonts-profont
 pandoc-bin
-peaclock
 polybar
 powershell-bin
 pqiv
@@ -20,6 +19,7 @@ rstudio-desktop-bin
 shellcheck-static
 systemd-boot-pacman-hook
 tmsu
+tty-clock
 visual-studio-code-bin
 xpub
 yay
