@@ -1,78 +1,66 @@
 #!/bin/bash
 set -e
 
-script_dir="$(dirname "$(readlink -f "$0")")"
-
-cores="$(grep -c ^processor /proc/cpuinfo)"
-
-case "$cores" in
-    16)
-        MAKEFLAGS='MAKEFLAGS="-j17"'
-        COMPRESSXZ='COMPRESSXZ=(xz -c -T 16 -z -)'
-        ;;
-    8)
-        MAKEFLAGS='MAKEFLAGS="-j9"'
-        COMPRESSXZ='COMPRESSXZ=(xz -c -T 8 -z -)'
-        ;;
-    6)
-        MAKEFLAGS='MAKEFLAGS="-j7"'
-        COMPRESSXZ='COMPRESSXZ=(xz -c -T 6 -z -)'
-        ;;
-    4)
-        MAKEFLAGS='MAKEFLAGS="-j5"'
-        COMPRESSXZ='COMPRESSXZ=(xz -c -T 4 -z -)'
-        ;;
-    2)
-        MAKEFLAGS='MAKEFLAGS="-j3"'
-        COMPRESSXZ='COMPRESSXZ=(xz -c -T 2 -z -)'
-        ;;
-esac
-
-if [[ -v MAKEFLAGS ]]; then
-	sudo sed -i "s/#MAKEFLAGS=\"-j2\"/${MAKEFLAGS}/g" /etc/makepkg.conf
-	sudo sed -i "s/COMPRESSXZ=(xz -c -z -)/${COMPRESSXZ}/g" /etc/makepkg.conf
+if [[ "$(id -u)" -ne 0 ]]; then
+    echo 'Must be run as root.'
+    exit 1
 fi
 
-sudo reflector -f 30 -l 30 --number 10 --verbose --save /etc/pacman.d/mirrorlist
-sudo pacman -Syyu --noconfirm
-yay -Syu --noconfirm
+# Get the parent directory of the script
+script_dir="$(dirname "$(readlink -f "$0")")"
 
-sudo sed '/^#/d' pkglist.txt | pacman -S --noconfirm --needed -
+# Build packages using all available cores
+cores="$(grep -c ^processor /proc/cpuinfo)"
+if [[ "$cores" =~ ^[0-9]+$ ]]; then
+    sed -i "s/^#MAKEFLAGS=\"-j2\"/MAKEFLAGS=\"-j$((cores + 1))\"/" /etc/makepkg.conf
+    sed -i "s/^COMPRESSXZ=(xz -c -z -)/COMPRESSXZ=(xz -c -T $cores -z -)/" /etc/makepkg.conf
+fi
 
-sudo systemctl set-default graphical.target
+# Update the system and populate the mirror list
+pacman -Syyu --noconfirm
+pacman -S --needed reflector
+reflector -f 30 -l 30 --number 10 --verbose --save /etc/pacman.d/mirrorlist
 
-sudo systemctl enable bluetooth.service
-sudo systemctl start bluetooth.service
+# Install the AUR helper yay
+tmpDir="$(mktemp -d)"
+cd "$tmpDir"
+git clone https://aur.archlinux.org/yay.git
+cd yay
+makepkg -si
+cd "$script_dir"
+rm -r "$tmpDir"
 
-sudo sed -i 's/'#AutoEnable=false'/'AutoEnable=true'/g' /etc/bluetooth/main.conf
+# Install packages
+yay -S --no-confirm --needed - < "$script_dir/pkgs"
+yay -S --no-confirm --needed - < "$script_dir/aur-pkgs"
+yay -S --no-confirm --asdeps - < "$script_dir/opt-pkgs"
 
-sudo systemctl enable org.cups.cupsd.service
+# Install system configuration files
+cp "$script_dir/etc/"* /etc
 
-sudo wget "https://git.samba.org/samba.git/?p=samba.git;a=blob_plain;f=examples/smb.conf.default;hb=HEAD" -O /etc/samba/smb.conf.original
+# Edit system configuration files
 
-sudo systemctl enable avahi-daemon.service
-sudo systemctl start avahi-daemon.service
+# Enable bluetooth automatically
+sed -i 's/'#AutoEnable=false'/'AutoEnable=true'/g' /etc/bluetooth/main.conf
 
-sudo sed -i 's/files mymachines myhostname/files mymachines/g' /etc/nsswitch.conf
-sudo sed -i 's/\[\!UNAVAIL=return\] dns/\[\!UNAVAIL=return\] mdns dns wins myhostname/g' /etc/nsswitch.conf
+# Causes the presence of /etc/hushlogins to supress the tty login message
+sed -i 's/^HUSHLOGIN/#HUSHLOGIN/' /etc/login.defs
 
-sudo systemctl enable tlp.service
-sudo systemctl start tlp-sleep.service
+# Supress fsck messages during boot
+sed -i '/^HOOKS=/s/udev/systemd/' /etc/mkinitcpio.conf
+mkinitcpio -p linux
 
-sed 's/^#/d' "$script_dir/aurpkglist.txt" | yay -S --no-confirm --needed -
+# Needed for autorandr
+udevadm control --reload-rules
 
-font_dir="$HOME/.local/share/fonts"
-mkdir -p "$font_dir"
+# Start desktop environment by default
+systemctl set-default graphical.target
 
-tmp_dir="$(mktemp -d)"
-
-wget --directory-prefix "$tmp_dir" --input-file "$script_dir/font-urls"
-
-for file in "$tmp_dir"/*; do
-	font_name="$(basename "$file" .zip)"
-	unzip -d "$font_dir/$font_name" "$file"
-done
-
-rm -r "$tmp_dir"
-
-fc-cache -f
+# Enable and start services
+systemctl enable --now NetworkManager.service
+systemctl enable --now bluetooth.service
+systemctl enable --now tlp.service
+systemctl enable --now tlp-sleep.service
+systemctl enable --now systemd-timesyncd.service
+systemctl enable --now autorandr.service
+systemctl daemon-reload

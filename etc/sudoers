@@ -1,0 +1,8 @@
+Defaults !tty_tickets
+Defaults pwfeedback
+
+root ALL=(ALL) ALL
+%wheel ALL=(ALL) ALL
+%power ALL=(root) NOPASSWD: /usr/bin/systemctl poweroff, /usr/bin/systemctl reboot, /usr/bin/systemctl suspend
+
+#includedir /etc/sudoers.d

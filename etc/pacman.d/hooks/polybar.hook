@@ -1,0 +1,10 @@
+[Trigger]
+Operation = Upgrade
+Operation = Remove
+Type = Package
+Target = *
+
+[Action]
+Description = Updating Polybar package count...
+When = PostTransaction
+Exec = /usr/bin/polybar-msg hook updates-arch-combined 1
