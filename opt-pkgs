@@ -1,7 +1,10 @@
 bash-completion
-perl-anyevent-i3
 lib32-mesa-vdpau
+linux
+linux-firmware
 mesa-vdpau
+perl-anyevent-i3
 pulseaudio-alsa
-zathura-pdf-mupdf
 python-ueberzug
+systemd-sysvcompat
+zathura-pdf-mupdf
