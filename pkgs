@@ -14,6 +14,7 @@ bluez-utils
 cmatrix
 copyq
 cowsay
+cups
 curl
 dictd
 dotnet-sdk
@@ -26,6 +27,7 @@ git
 glava
 gparted
 highlight
+hplip
 htop
 i3-gaps
 inotify-tools
