@@ -6,5 +6,4 @@ mesa-vdpau
 perl-anyevent-i3
 pulseaudio-alsa
 python-ueberzug
-systemd-sysvcompat
 zathura-pdf-mupdf
