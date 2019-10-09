@@ -1,0 +1,6 @@
+#!/bin/bash
+files=(pkgs aur-pkgs opt-pkgs)
+for file in "${files[@]}"; do
+    sort --output "$file" "$file"
+    git add "$file"
+done
