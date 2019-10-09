@@ -35,17 +35,15 @@ inotify-tools
 intel-ucode
 ipython
 jq
-kvantum-qt5
-kvantum-theme-arc
 lastpass-cli
 lib32-mesa
 lib32-vulkan-radeon
 libnotify
 libreoffice-fresh
-lxappearance
 lxqt-policykit
 maim
 man-pages
+materia-gtk-theme
 meld
 mlocate
 mpc
@@ -68,7 +66,6 @@ powertop
 pulseaudio
 python-pip
 python-pywal
-qt5ct
 qutebrowser
 r
 reflector
