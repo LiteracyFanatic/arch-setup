@@ -59,6 +59,7 @@ nodejs
 npm
 numlockx
 octave
+openssh
 pacman-contrib
 pacutils
 physlock
