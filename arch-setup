@@ -22,6 +22,7 @@ pacman -S --needed reflector
 reflector -f 30 -l 30 --number 10 --verbose --save /etc/pacman.d/mirrorlist
 
 # Install the AUR helper yay
+pacman -S --needed git
 tmpDir="$(mktemp -d)"
 cd "$tmpDir"
 git clone https://aur.archlinux.org/yay-bin.git
