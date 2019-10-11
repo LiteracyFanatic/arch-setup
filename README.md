@@ -10,3 +10,5 @@ This is a bash script meant to be used after completing an installation of Arch 
 - Enable a number of systemd services
 
 The package lists are sorted automatically by a pre-commit git hook which can be installed by running `ln -sr hooks/* .git/hooks/`.
+
+This branch is for my personal laptop: a 15" HP Spectre x360.
