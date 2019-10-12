@@ -18,23 +18,38 @@ fi
 
 # Update the system and populate the mirror list
 pacman -Syyu --noconfirm
-pacman -S --needed reflector
+pacman -S --noconfirm --needed reflector
 reflector -f 30 -l 30 --number 10 --verbose --save /etc/pacman.d/mirrorlist
 
 # Install the AUR helper yay
-pacman -S --needed git
-tmpDir="$(mktemp -d)"
-cd "$tmpDir"
-git clone https://aur.archlinux.org/yay-bin.git
+pacman -S --noconfirm --needed git base-devel
+buildDir="$(runuser -u nobody -- mktemp -d)"
+cd "$buildDir"
+runuser -u nobody -- git clone https://aur.archlinux.org/yay-bin.git
 cd yay-bin
-makepkg -si
-cd "$script_dir"
-rm -r "$tmpDir"
+runuser -u nobody -- makepkg -s
+pacman --noconfirm --needed -U -- *.pkg.tar.*
 
-# Install packages
-yay -S --no-confirm --needed - < "$script_dir/pkgs"
-yay -S --no-confirm --needed - < "$script_dir/aur-pkgs"
-yay -S --no-confirm --asdeps - < "$script_dir/opt-pkgs"
+# Install regular packages
+pacman -S --noconfirm --needed - < "$script_dir/pkgs"
+pacman -S --noconfirm --asdeps - < "$script_dir/opt-pkgs"
+
+# Install AUR packages
+cd "$buildDir"
+while read -r pkg; do
+    runuser -u nobody -- yay -G "$pkg"
+    cd "$pkg"
+    runuser -u nobody -- makepkg -s
+    pacman -U --noconfirm -- *.pkg.tar.*
+    cd "$buildDir"
+    rm -r "$pkg"
+done < "$script_dir/aur-pkgs"
+
+cd "$script_dir"
+rm -r "$buildDir"
+
+# Remove build dependencies
+pacman -Qqtd | pacman -Rns -
 
 # Install system configuration files
 cp "$script_dir/etc/"* /etc
