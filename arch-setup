@@ -32,18 +32,30 @@ pacman --noconfirm --needed -U -- *.pkg.tar.*
 
 # Install regular packages
 pacman -S --noconfirm --needed - < "$script_dir/pkgs"
-pacman -S --noconfirm --asdeps - < "$script_dir/opt-pkgs"
+pacman -S --noconfirm --needed --asdeps - < "$script_dir/opt-pkgs"
+
+installAur() {
+    pkg="$1"
+    if pacman -Q "$pkg" &>/dev/null; then
+        cd "$buildDir"
+        runuser -u nobody -- yay -G "$pkg"
+        cd "$pkg"
+        runuser -u nobody -- makepkg -s
+        pacman -U --noconfirm -- *.pkg.tar.*
+        cd "$buildDir"
+        rm -r "$pkg"
+    fi
+}
 
 # Install AUR packages
-cd "$buildDir"
 while read -r pkg; do
-    runuser -u nobody -- yay -G "$pkg"
-    cd "$pkg"
-    runuser -u nobody -- makepkg -s
-    pacman -U --noconfirm -- *.pkg.tar.*
-    cd "$buildDir"
-    rm -r "$pkg"
+    installAur "$pkg"
 done < "$script_dir/aur-pkgs"
+
+while read -r pkg; do
+    installAur "$pkg"
+    pacman -D --asdeps "$pkg"
+done < "$script_dir/aur-opt-pkgs"
 
 cd "$script_dir"
 rm -r "$buildDir"
