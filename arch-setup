@@ -27,21 +27,41 @@ buildDir="$(runuser -u nobody -- mktemp -d)"
 cd "$buildDir"
 runuser -u nobody -- git clone https://aur.archlinux.org/yay-bin.git
 cd yay-bin
-runuser -u nobody -- makepkg -s
+runuser -u nobody -- makepkg
 pacman --noconfirm --needed -U -- *.pkg.tar.*
 
 # Install regular packages
 pacman -S --noconfirm --needed - < "$script_dir/pkgs"
 pacman -S --noconfirm --needed --asdeps - < "$script_dir/opt-pkgs"
 
+isInstalled() {
+    pacman -Q "$pkg" &>/dev/null
+}
+
+isAur() {
+    ! pacman -Si "$1" &>/dev/null
+}
+
+getDeps() {
+    awk '/(make)?depends/ { print $3 }' .SRCINFO
+}
+
 installAur() {
     pkg="$1"
-    if pacman -Q "$pkg" &>/dev/null; then
+    if ! isInstalled "$pkg"; then
         cd "$buildDir"
         # Environment variables are a workaround for bug #1060 in yay
         XDG_CONFIG_HOME="$buildDir" XDG_CACHE_HOME="$buildDir" runuser -u nobody -- yay -G "$pkg"
         cd "$pkg"
-        runuser -u nobody -- makepkg -s
+        while read -r dep; do
+            if isAur "$dep"; then
+                installAur "$dep"
+                pacman -D --asdeps "$pkg"
+            else
+                pacman -S --noconfirm --needed --asdeps "$pkg"
+            fi
+        done < <(getDeps)
+        runuser -u nobody -- makepkg
         pacman -U --noconfirm -- *.pkg.tar.*
         cd "$buildDir"
         rm -r "$pkg"
