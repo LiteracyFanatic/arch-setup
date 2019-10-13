@@ -38,7 +38,8 @@ installAur() {
     pkg="$1"
     if pacman -Q "$pkg" &>/dev/null; then
         cd "$buildDir"
-        runuser -u nobody -- yay -G "$pkg"
+        # Environment variables are a workaround for bug #1060 in yay
+        XDG_CONFIG_HOME="$buildDir" XDG_CACHE_HOME="$buildDir" runuser -u nobody -- yay -G "$pkg"
         cd "$pkg"
         runuser -u nobody -- makepkg -s
         pacman -U --noconfirm -- *.pkg.tar.*
