@@ -7,7 +7,7 @@ if [[ "$(id -u)" -ne 0 ]]; then
 fi
 
 # Get the parent directory of the script
-script_dir="$(dirname "$(readlink -f "$0")")"
+scriptDir="$(dirname "$(readlink -f "$0")")"
 
 # Build packages using all available cores
 cores="$(grep -c ^processor /proc/cpuinfo)"
@@ -21,71 +21,37 @@ pacman -Syyu --noconfirm
 pacman -S --noconfirm --needed reflector
 reflector -f 30 -l 30 --number 10 --verbose --save /etc/pacman.d/mirrorlist
 
+# Install regular packages
+pacman -S --noconfirm --needed - < "$scriptDir/pkgs"
+pacman -S --noconfirm --needed --asdeps - < "$scriptDir/opt-pkgs"
+
+useradd --system --create-home aur
+echo 'aur ALL=NOPASSWD: /usr/bin/pacman' > /etc/sudoers.d/aur
+
 # Install the AUR helper yay
 pacman -S --noconfirm --needed git base-devel
-buildDir="$(runuser -u nobody -- mktemp -d)"
-cd "$buildDir"
-runuser -u nobody -- git clone https://aur.archlinux.org/yay-bin.git
-cd yay-bin
-runuser -u nobody -- makepkg
-pacman --noconfirm --needed -U -- *.pkg.tar.*
+if ! pacman -Q yay-bin &>/dev/null; then
+    buildDir="$(runuser -u aur -- mktemp -d)"
+    cd "$buildDir"
+    runuser -u aur -- git clone https://aur.archlinux.org/yay-bin.git
+    cd yay-bin
+    runuser -u aur -- makepkg -s
+    pacman -U --noconfirm -- *.pkg.*
+    cd "$scriptDir"
+    rm -r "$buildDir"
+fi
 
-# Install regular packages
-pacman -S --noconfirm --needed - < "$script_dir/pkgs"
-pacman -S --noconfirm --needed --asdeps - < "$script_dir/opt-pkgs"
+runuser -u aur -- yay -S --noconfirm --needed - < "$scriptDir/aur-pkgs"
+runuser -u aur -- yay -S --noconfirm --needed --asdeps - < "$scriptDir/aur-opt-pkgs"
 
-isInstalled() {
-    pacman -Q "$pkg" &>/dev/null
-}
-
-isAur() {
-    ! pacman -Si "$1" &>/dev/null
-}
-
-getDeps() {
-    awk '/(make)?depends/ { print $3 }' .SRCINFO
-}
-
-installAur() {
-    pkg="$1"
-    if ! isInstalled "$pkg"; then
-        cd "$buildDir"
-        # Environment variables are a workaround for bug #1060 in yay
-        XDG_CONFIG_HOME="$buildDir" XDG_CACHE_HOME="$buildDir" runuser -u nobody -- yay -G "$pkg"
-        cd "$pkg"
-        while read -r dep; do
-            if isAur "$dep"; then
-                installAur "$dep"
-                pacman -D --asdeps "$pkg"
-            else
-                pacman -S --noconfirm --needed --asdeps "$pkg"
-            fi
-        done < <(getDeps)
-        runuser -u nobody -- makepkg
-        pacman -U --noconfirm -- *.pkg.tar.*
-        cd "$buildDir"
-        rm -r "$pkg"
-    fi
-}
-
-# Install AUR packages
-while read -r pkg; do
-    installAur "$pkg"
-done < "$script_dir/aur-pkgs"
-
-while read -r pkg; do
-    installAur "$pkg"
-    pacman -D --asdeps "$pkg"
-done < "$script_dir/aur-opt-pkgs"
-
-cd "$script_dir"
-rm -r "$buildDir"
+userdel --remove aur
+rm /etc/sudoers.d/aur
 
 # Remove build dependencies
-pacman -Qqtd | pacman -Rns -
+pacman -Qqtd | pacman -Rns - || true
 
 # Install system configuration files
-cp "$script_dir/etc/"* /etc
+cp "$scriptDir/etc/"* /etc
 
 # Edit system configuration files
 
