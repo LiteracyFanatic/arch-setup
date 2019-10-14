@@ -33,6 +33,7 @@ wget
 xclip
 xdg-user-dirs
 xdg-utils
+xf86-video-fbdev
 xfce4-terminal
 xorg
 xorg-xclipboard
