@@ -48,6 +48,9 @@ pacman -Qqtd | pacman -Rns - || true
 # Install system configuration files
 cp "$scriptDir/etc/"* /etc
 
+# Install boot config to enable audio
+cp "$scriptDir/boot/"* /boot
+
 # Enable and start services
 systemctl enable --now systemd-resolved.service
 systemctl enable --now systemd-timesyncd.service
