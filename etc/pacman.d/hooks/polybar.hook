@@ -7,4 +7,4 @@ Target = *
 [Action]
 Description = Updating Polybar package count...
 When = PostTransaction
-Exec = /usr/bin/polybar-msg hook updates-arch-combined 1
+Exec = /usr/bin/bash -c '/usr/bin/polybar-msg hook package-updates 1 &>/dev/null || true'
