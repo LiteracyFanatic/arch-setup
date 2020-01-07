@@ -72,6 +72,7 @@ udevadm control --reload-rules
 systemctl set-default graphical.target
 
 # Enable and start services
+systemctl enable --now systemd-resolved.service
 systemctl enable --now NetworkManager.service
 systemctl enable --now bluetooth.service
 systemctl enable --now org.cups.cupsd.service
