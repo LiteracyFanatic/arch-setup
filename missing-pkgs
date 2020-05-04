@@ -1,0 +1,5 @@
+#!/bin/bash
+trackedPackages="$(./tracked-pkgs)"
+explicitPackages="$(yay -Qq | sort)"
+diff <(echo "$trackedPackages") <(echo "$explicitPackages") \
+    | sed -n 's/< //p'

@@ -1,0 +1,16 @@
+#!/bin/bash
+case "$1" in
+    -e | --explicit)
+        files=(pkgs aur-pkgs)
+        ;;
+    -d | --deps)
+        files=(opt-pkgs aur-opt-pkgs)
+        ;;
+    *)
+        files=(pkgs aur-pkgs opt-pkgs aur-opt-pkgs)
+        ;;
+esac
+
+while read -r pkg; do
+    expac -Qg '%n' "$pkg" || echo "$pkg"
+done < <(cat "${files[@]}") | sort | uniq
