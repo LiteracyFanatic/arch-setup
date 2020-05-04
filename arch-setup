@@ -16,11 +16,6 @@ if [[ "$cores" =~ ^[0-9]+$ ]]; then
     sed -i "s/^COMPRESSXZ=(xz -c -z -)/COMPRESSXZ=(xz -c -T $cores -z -)/" /etc/makepkg.conf
 fi
 
-# Update the system and populate the mirror list
-pacman -Syyu --noconfirm
-pacman -S --noconfirm --needed reflector
-reflector -f 30 -l 30 --number 10 --verbose --save /etc/pacman.d/mirrorlist
-
 # Install regular packages
 pacman -S --noconfirm --needed - < "$scriptDir/pkgs"
 pacman -S --noconfirm --needed --asdeps - < "$scriptDir/opt-pkgs"
