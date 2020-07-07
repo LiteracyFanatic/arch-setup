@@ -1,4 +1,3 @@
-bash-pipes
 bash-pureline-git
 compton-tryone-git
 dict-gcide
@@ -8,6 +7,7 @@ google-chrome
 neovim-plug
 nerd-fonts-profont
 pandoc-bin
+pipes.sh
 polybar
 powershell-bin
 pqiv
@@ -16,7 +16,7 @@ ranger
 rofi-dmenu
 rstudio-desktop-bin
 rts_bpp-dkms-git
-shellcheck-static
+shellcheck-bin
 systemd-boot-pacman-hook
 tmsu
 tty-clock
