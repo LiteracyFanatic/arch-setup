@@ -48,31 +48,8 @@ pacman -Qqtd | pacman -Rns - || true
 # Install system configuration files
 cp "$scriptDir/etc/"* /etc
 
-# Edit system configuration files
-
-# Enable bluetooth automatically
-sed -i 's/'#AutoEnable=false'/'AutoEnable=true'/g' /etc/bluetooth/main.conf
-
-# Causes the presence of /etc/hushlogins to supress the tty login message
-sed -i 's/^HUSHLOGIN/#HUSHLOGIN/' /etc/login.defs
-
-# Supress fsck messages during boot
-sed -i '/^HOOKS=/s/udev/systemd/' /etc/mkinitcpio.conf
-mkinitcpio -p linux
-
-# Needed for autorandr
-udevadm control --reload-rules
-
-# Start desktop environment by default
-systemctl set-default graphical.target
-
 # Enable and start services
 systemctl enable --now systemd-resolved.service
-systemctl enable --now NetworkManager.service
-systemctl enable --now bluetooth.service
-systemctl enable --now org.cups.cupsd.service
-systemctl enable --now tlp.service
-systemctl enable --now tlp-sleep.service
 systemctl enable --now systemd-timesyncd.service
-systemctl enable --now autorandr.service
+systemctl enable --now sshd.service
 systemctl daemon-reload

@@ -1,9 +1,4 @@
 bash-completion
-lib32-mesa-vdpau
-linux-firmware
-linux-headers
-mesa-vdpau
 perl-anyevent-i3
 pulseaudio-alsa
 ueberzug
-zathura-pdf-mupdf
