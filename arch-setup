@@ -19,7 +19,7 @@ fi
 # Update the system and populate the mirror list
 pacman -Syyu --noconfirm
 pacman -S --noconfirm --needed reflector
-reflector -f 30 -l 30 --number 10 --verbose --save /etc/pacman.d/mirrorlist
+reflector --save /etc/pacman.d/mirrorlist --protocol https --country US --sort score --age 1 --score 5
 
 # Install regular packages
 pacman -S --noconfirm --needed - < "$scriptDir/pkgs"
@@ -80,4 +80,5 @@ systemctl enable --now tlp.service
 systemctl enable --now tlp-sleep.service
 systemctl enable --now systemd-timesyncd.service
 systemctl enable --now autorandr.service
+systemctl enable --now reflector.service
 systemctl daemon-reload
