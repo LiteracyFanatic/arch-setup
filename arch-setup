@@ -61,9 +61,7 @@ sed -i 's/'#AutoEnable=false'/'AutoEnable=true'/g' /etc/bluetooth/main.conf
 # Causes the presence of /etc/hushlogins to supress the tty login message
 sed -i 's/^HUSHLOGIN/#HUSHLOGIN/' /etc/login.defs
 
-# Supress fsck messages during boot
-sed -i '/^HOOKS=/s/udev/systemd/' /etc/mkinitcpio.conf
-mkinitcpio -p linux
+mkinitcpio --allpresets
 
 # Needed for autorandr
 udevadm control --reload-rules
