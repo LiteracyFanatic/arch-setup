@@ -1,5 +1,7 @@
 bash-completion
+lib32-libva-mesa-driver
 lib32-mesa-vdpau
+libva-mesa-driver
 linux-firmware
 linux-headers
 mesa-vdpau

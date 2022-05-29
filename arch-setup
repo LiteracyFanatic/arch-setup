@@ -76,7 +76,6 @@ systemctl enable --now NetworkManager-dispatcher.service
 systemctl enable --now NetworkManager-wait-online.service
 systemctl enable --now bluetooth.service
 systemctl enable --now cups.service
-systemctl enable --now tlp.service
 systemctl enable --now systemd-timesyncd.service
 systemctl enable --now autorandr.service
 systemctl enable --now reflector.timer

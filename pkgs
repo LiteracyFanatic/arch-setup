@@ -1,4 +1,5 @@
 alsa-utils
+amd-ucode
 arandr
 aria2
 asciiquarium
@@ -78,7 +79,6 @@ httpie
 i3-gaps
 inkscape
 inotify-tools
-intel-ucode
 ipython
 jo
 jq
@@ -100,6 +100,7 @@ man-pages
 materia-gtk-theme
 materia-kde
 meld
+mesa
 mesa-demos
 meson
 mlocate
@@ -171,7 +172,6 @@ tesseract-data-eng
 tesseract-data-jpn
 tesseract-data-jpn_vert
 the_silver_searcher
-tlp
 tree
 ttf-dejavu
 ttf-ibm-plex
@@ -197,7 +197,6 @@ xdg-user-dirs
 xdg-utils
 xdotool
 xf86-video-amdgpu
-xf86-video-intel
 xfce4-terminal
 xlockmore
 xorg
@@ -211,5 +210,4 @@ yq
 zathura
 zenity
 zip
-zram-generator
 zstd
