@@ -1,0 +1,7 @@
+#!/bin/bash
+while read -r file; do
+    diff "$file" "${file#/}" &>/dev/null
+    if [[ ! -e "${file#/}" ]]; then
+        echo "$file"
+    fi
+done < <(yay -Qii | grep '^MODIFIED' | awk '{ print $2 }')

@@ -1,0 +1,8 @@
+#!/bin/bash
+systemFile="$1"
+trackedFile="${systemFile#/}"
+if [[ -e "$trackedFile" ]]; then
+    meld <(./get-original-file "$systemFile") "$systemFile" "$trackedFile"
+else
+    meld <(./get-original-file "$systemFile") "$systemFile"
+fi

@@ -1,0 +1,11 @@
+#!/bin/bash
+filePath="$(realpath "$1")"
+packageName="$(yay -Qqo "$filePath")"
+packageNameWithVersion="$(expac '%n-%v-%a' "$packageName")"
+if yay -Qqm | grep "$packageName" &>/dev/null; then
+    searchPath="$XDG_CACHE_HOME/yay/$packageName"
+else
+    searchPath=/var/cache/pacman/pkg/
+fi
+packagePath="$(find "$searchPath" -type f -name "$packageNameWithVersion.pkg*" -not -name '*.sig')"
+sudo tar -xvOf "$packagePath" "${filePath#/}"
