@@ -140,6 +140,7 @@ physlock
 pipewire-alsa
 pipewire-pulse
 pipewire-zeroconf
+polybar
 postgresql
 powertop
 prettier
