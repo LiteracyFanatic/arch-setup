@@ -18,7 +18,6 @@ bitwarden-cli
 blueman
 bluez
 bluez-utils
-blugon
 breeze
 breeze-icons
 cantata
@@ -27,7 +26,6 @@ cmake
 cmatrix
 copyq
 cowsay
-crow-translate
 cups
 curl
 dateutils
@@ -59,7 +57,6 @@ firefox
 fortune-mod
 freerdp
 fzf
-gallery-dl
 geoip
 gimagereader-gtk
 gimp
@@ -176,7 +173,6 @@ the_silver_searcher
 tlp
 tree
 ttf-ibm-plex
-ttf-weather-icons
 unicode-character-database
 unzip
 upower
