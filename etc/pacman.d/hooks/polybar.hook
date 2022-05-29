@@ -6,5 +6,6 @@ Target = *
 
 [Action]
 Description = Updating Polybar package count...
+Depends = polybar
 When = PostTransaction
-Exec = /usr/bin/bash -c '/usr/bin/polybar-msg hook package-updates 1 &>/dev/null || true'
+Exec = /usr/bin/bash -c 'XDG_RUNTIME_DIR="/run/user/$(id -u jordan)" sudo -u jordan --preserve-env=XDG_RUNTIME_DIR -- polybar-msg action "#package-updates.hook.0" &>/dev/null || true'
