@@ -3,5 +3,10 @@
 
 /bin/sh
 /bin/bash
-/usr/bin/git-shell
+/bin/rbash
+/bin/git-shell
+/bin/pwsh
 /usr/bin/pwsh
+/usr/bin/sh
+/usr/bin/bash
+/usr/bin/rbash
