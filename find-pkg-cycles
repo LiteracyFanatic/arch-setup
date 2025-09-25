@@ -1,0 +1,377 @@
+#!/usr/bin/env python3
+# Detect Arch Linux dependency cycles (SCCs) that are only referenced by each other
+# (no incoming edges from outside the cycle) and contain no explicitly installed pkgs.
+# Resolves virtual deps via 'provides'. Includes:
+#   --check PKG       inspect one package's SCC + removability
+#   --verbose         print resolution steps for --check (and note fallbacks)
+#   --show-reasons    show why non-removable SCCs were excluded
+#   --json            machine-readable output
+#   --include-singletons  include singleton self-loop SCCs (rare)
+#
+# Requirements: pacman, expac (pacman-contrib)
+
+import argparse
+import json
+import re
+import shlex
+import subprocess
+import sys
+from collections import defaultdict
+
+def run(cmd):
+    try:
+        p = subprocess.run(cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        return p.stdout
+    except subprocess.CalledProcessError as e:
+        sys.stderr.write(f"[ERR] Command failed: {' '.join(cmd)}\n{e.stderr}\n")
+        sys.exit(1)
+
+def get_explicit_packages():
+    out = run(["pacman", "-Qqe"])
+    return set(x for x in (line.strip() for line in out.splitlines()) if x)
+
+def get_installed_packages():
+    out = run(["pacman", "-Qq"])
+    return [x for x in (line.strip() for line in out.splitlines()) if x]
+
+_version_re = re.compile(r"[<>=].*")
+
+def parse_dep_name(token: str) -> str:
+    tok = token.strip()
+    if "/" in tok:  # repo/pkg
+        tok = tok.split("/", 1)[1]
+    tok = _version_re.split(tok, 1)[0]
+    return tok.strip()
+
+def _expac_triplet(pkgs):
+    """Return dict name -> (dep_tokens, prov_tokens) using one expac call."""
+    fmt = r"%n\t%D\t%p"
+    out = run(["expac", "-Q", "-d", " ", fmt, *pkgs]) if pkgs else ""
+    result = {}
+    for line in out.splitlines():
+        if not line.strip():
+            continue
+        parts = line.split("\t")
+        if len(parts) < 3:
+            parts += [""] * (3 - len(parts))
+        name, deps_str, prov_str = parts[0], parts[1], parts[2]
+        dep_tokens = [] if not deps_str or deps_str.strip() in ("-", "None") else deps_str.strip().split()
+        prov_tokens = [] if not prov_str or prov_str.strip() in ("-", "None") else prov_str.strip().split()
+        result[name] = (dep_tokens, prov_tokens)
+    return result
+
+def fetch_all_pkg_meta(installed_pkgs, verbose=False, batch_size=500):
+    """
+    Query expac for installed packages in chunks. Any pkg missing from the batch
+    results is re-queried individually to fill metadata.
+    Returns:
+      installed(set), depends_map(pkg->list depnames), provides_map(pkg->set providenames),
+      raw_dep_tokens(pkg->list), raw_provides_tokens(pkg->list), filled_by_fallback(set)
+    """
+    depends_map = {}
+    provides_map = {}
+    raw_dep_tokens = {}
+    raw_provides_tokens = {}
+
+    # Batch fetch
+    seen = set()
+    for i in range(0, len(installed_pkgs), batch_size):
+        chunk = installed_pkgs[i:i+batch_size]
+        trip = _expac_triplet(chunk)
+        for name, (dep_tokens, prov_tokens) in trip.items():
+            seen.add(name)
+            raw_dep_tokens[name] = dep_tokens[:]
+            raw_provides_tokens[name] = prov_tokens[:]
+            depends_map[name] = [parse_dep_name(t) for t in dep_tokens]
+            provides_map[name] = set(parse_dep_name(t) for t in prov_tokens)
+
+    # Fallback: individually query any not returned (or weirdly empty)
+    filled_by_fallback = set()
+    for name in installed_pkgs:
+        if name not in seen:
+            trip = _expac_triplet([name])
+            dep_tokens, prov_tokens = trip.get(name, ([], []))
+            raw_dep_tokens[name] = dep_tokens[:]
+            raw_provides_tokens[name] = prov_tokens[:]
+            depends_map[name] = [parse_dep_name(t) for t in dep_tokens]
+            provides_map[name] = set(parse_dep_name(t) for t in prov_tokens)
+            filled_by_fallback.add(name)
+        else:
+            # Even if seen, ensure keys exist
+            depends_map.setdefault(name, [])
+            provides_map.setdefault(name, set())
+            raw_dep_tokens.setdefault(name, [])
+            raw_provides_tokens.setdefault(name, [])
+
+    # Installed set is from pacman (authoritative)
+    installed = set(installed_pkgs)
+    return installed, depends_map, provides_map, raw_dep_tokens, raw_provides_tokens, filled_by_fallback
+
+def build_graph_with_virtuals(installed, depends_map, provides_map):
+    """
+    Build forward dependency graph resolving virtuals via provides.
+    Returns:
+      all_nodes(set), children(parent->set(child)), required_by(child->set(parent)),
+      provided_by(virtual->set(providers)), unresolved(parent->set(depnames))
+    """
+    provided_by = defaultdict(set)
+    for pkg, provs in provides_map.items():
+        for prov in provs:
+            provided_by[prov].add(pkg)
+    for pkg in installed:
+        provided_by[pkg].add(pkg)
+
+    children = defaultdict(set)
+    unresolved = defaultdict(set)
+
+    for parent in installed:
+        for depname in depends_map.get(parent, []):
+            providers = provided_by.get(depname, set())
+            if providers:
+                for child in providers:
+                    children[parent].add(child)
+            else:
+                unresolved[parent].add(depname)
+
+    required_by = defaultdict(set)
+    for p, kids in children.items():
+        for c in kids:
+            required_by[c].add(p)
+
+    # Ensure nodes exist
+    for n in installed:
+        children.setdefault(n, set())
+        required_by.setdefault(n, set())
+
+    return installed, children, required_by, provided_by, unresolved
+
+def tarjan_scc(nodes, children):
+    sys.setrecursionlimit(1000000)
+    index = 0
+    idx = {}
+    low = {}
+    stack = []
+    onstack = set()
+    sccs = []
+
+    def strongconnect(v):
+        nonlocal index
+        idx[v] = index
+        low[v] = index
+        index += 1
+        stack.append(v)
+        onstack.add(v)
+        for w in children[v]:
+            if w not in idx:
+                strongconnect(w)
+                low[v] = min(low[v], low[w])
+            elif w in onstack:
+                low[v] = min(low[v], idx[w])
+        if low[v] == idx[v]:
+            comp = []
+            while True:
+                w = stack.pop()
+                onstack.remove(w)
+                comp.append(w)
+                if w == v:
+                    break
+            sccs.append(set(comp))
+
+    for v in nodes:
+        if v not in idx:
+            strongconnect(v)
+    return sccs
+
+def find_cycles(all_nodes, required_by, children, explicit, include_singletons=False):
+    sccs = tarjan_scc(all_nodes, children)
+    candidates, nonremovable = [], []
+
+    for comp in sccs:
+        if len(comp) < 2:
+            if not include_singletons:
+                continue
+            v = next(iter(comp))
+            if v not in children[v]:
+                continue
+        if comp & explicit:
+            nonremovable.append((comp, {"has_explicit": sorted(comp & explicit)}))
+            continue
+        external = defaultdict(list)
+        has_external = False
+        for node in comp:
+            for parent in required_by[node]:
+                if parent not in comp:
+                    has_external = True
+                    external[node].append(parent)
+        if has_external:
+            nonremovable.append((comp, {"incoming_from_outside": {k: sorted(v) for k, v in external.items() if v}}))
+            continue
+        candidates.append(comp)
+
+    return candidates, nonremovable
+
+def check_package(pkg, all_nodes, children, required_by, provided_by, depends_map, provides_map, raw_dep_tokens, explicit, include_singletons, verbose, filled_by_fallback):
+    if pkg not in all_nodes:
+        print(f"[check] Package '{pkg}' is not installed (dataset).")
+        print("        Sanity check: pacman -Q " + shlex.quote(pkg))
+        return 1
+
+    sccs = tarjan_scc(all_nodes, children)
+    comp = next((c for c in sccs if pkg in c), None)
+    if comp is None:
+        print(f"[check] Internal error: SCC not found for '{pkg}'.")
+        return 1
+
+    comp_sorted = sorted(comp)
+    print(f"[check] SCC containing '{pkg}': size={len(comp)} members={', '.join(comp_sorted)}")
+
+    removable = True
+    reasons = {}
+
+    if len(comp) < 2:
+        if not include_singletons or pkg not in children[pkg]:
+            removable = False
+            reasons["size"] = "singleton without self-loop"
+
+    exp = sorted(comp & explicit)
+    if exp:
+        removable = False
+        reasons["has_explicit"] = exp
+
+    external = defaultdict(list)
+    for node in comp:
+        for parent in required_by[node]:
+            if parent not in comp:
+                external[node].append(parent)
+    external = {k: sorted(v) for k, v in external.items() if v}
+    if external:
+        removable = False
+        reasons["incoming_from_outside"] = external
+
+    if removable:
+        print("[check] Verdict: REMOVABLE cycle (no external incoming edges, no explicit packages).")
+        print("         Remove with:")
+        print("           sudo pacman -Rns " + " ".join(shlex.quote(x) for x in comp_sorted))
+    else:
+        print("[check] Verdict: NOT removable (reasons below).")
+        for k, v in reasons.items():
+            if k == "has_explicit":
+                print(f"  - Contains explicitly installed packages: {' '.join(v)}")
+            elif k == "incoming_from_outside":
+                print(f"  - Incoming edges from outside SCC:")
+                for node, parents in sorted(v.items()):
+                    print(f"      {node}  <=  {' '.join(parents)}")
+            else:
+                print(f"  - {k}: {v}")
+
+    if verbose:
+        print("\n[verbose] --- Resolution detail for packages in this SCC ---")
+        for p in comp_sorted:
+            fb = " [fallback]" if p in filled_by_fallback else ""
+            print(f"[verbose] {p}{fb}")
+            prov_names = provides_map.get(p, set())
+            print(f"  provides: {' '.join(sorted(prov_names)) if prov_names else '(none)'}")
+            raw_tokens = raw_dep_tokens.get(p, [])
+            if not raw_tokens:
+                print("  depends: (none)")
+            else:
+                print(f"  depends (raw tokens): {' '.join(raw_tokens)}")
+                for tok in raw_tokens:
+                    depname = parse_dep_name(tok)
+                    providers = sorted(provided_by.get(depname, []))
+                    if providers:
+                        print(f"    - {tok}  => dep '{depname}' -> providers(installed): {' '.join(providers)}")
+                    else:
+                        print(f"    - {tok}  => dep '{depname}' -> providers(installed): (none)")
+            parents_in = sorted([q for q in required_by[p] if q in comp])
+            kids_in = sorted([q for q in children[p] if q in comp])
+            print(f"  parents(in-SCC): {' '.join(parents_in) if parents_in else '(none)'}")
+            print(f"  children(in-SCC): {' '.join(kids_in) if kids_in else '(none)'}")
+            parents_out = sorted([q for q in required_by[p] if q not in comp])
+            if parents_out:
+                print(f"  parents(outside): {' '.join(parents_out)}")
+            print()
+    return 0
+
+def main():
+    ap = argparse.ArgumentParser(description="Find Arch Linux dep cycles only used by each other (resolves virtuals).")
+    ap.add_argument("--json", action="store_true", help="JSON output.")
+    ap.add_argument("--show-reasons", action="store_true", help="Also show non-removable SCCs with reasons.")
+    ap.add_argument("--include-singletons", action="store_true", help="Include singleton self-loop SCCs.")
+    ap.add_argument("--check", metavar="PKG", help="Inspect a specific installed package for cycle membership and removability.")
+    ap.add_argument("--verbose", action="store_true", help="Verbose step-by-step resolution for --check.")
+    args = ap.parse_args()
+
+    explicit = get_explicit_packages()
+    installed_pkgs = get_installed_packages()
+
+    installed, depends_map, provides_map, raw_dep_tokens, raw_provides_tokens, filled_by_fallback = fetch_all_pkg_meta(
+        installed_pkgs, verbose=args.verbose
+    )
+    # installed is now guaranteed to include everything from pacman -Qq
+    all_nodes, children, required_by, provided_by, unresolved = build_graph_with_virtuals(
+        installed, depends_map, provides_map
+    )
+
+    if args.check:
+        rc = check_package(
+            args.check, all_nodes, children, required_by, provided_by,
+            depends_map, provides_map, raw_dep_tokens, explicit,
+            include_singletons=args.include_singletons, verbose=args.verbose,
+            filled_by_fallback=filled_by_fallback
+        )
+        if args.verbose:
+            unresolved_edges = sum(len(v) for v in unresolved.values())
+            print(f"[verbose] unresolved edges total: {unresolved_edges}")
+        sys.exit(rc)
+
+    candidates, nonrem = find_cycles(all_nodes, required_by, children, explicit, include_singletons=args.include_singletons)
+
+    def sort_comp(comp):
+        return sorted(comp)
+
+    if args.json:
+        payload = {
+            "candidates": [
+                {
+                    "packages": sort_comp(c),
+                    "remove_command": f"sudo pacman -Rns {' '.join(shlex.quote(x) for x in sort_comp(c))}"
+                }
+                for c in sorted(candidates, key=lambda s: (len(s), sorted(s)))
+            ],
+            "stats": {
+                "installed_count": len(all_nodes),
+                "unresolved_dep_edges": sum(len(v) for v in unresolved.values()),
+                "fallback_filled_count": len(filled_by_fallback)
+            }
+        }
+        if args.show_reasons:
+            payload["nonremovable"] = [
+                {"packages": sort_comp(comp), "reasons": reason}
+                for comp, reason in nonrem
+            ]
+        print(json.dumps(payload, indent=2))
+        return
+
+    if not candidates:
+        print("No mutually-dependent, externally-unreferenced cycles found.")
+    else:
+        print("Potential removable dependency cycles (no external incoming edges, no explicit pkgs):\n")
+        for i, comp in enumerate(sorted(candidates, key=lambda s: (len(s), sorted(s))), 1):
+            pkgs = " ".join(sort_comp(comp))
+            print(f"{i}) {pkgs}")
+            print(f"   To remove: sudo pacman -Rns {' '.join(shlex.quote(x) for x in sort_comp(comp))}\n")
+
+    if args.show_reasons and nonrem:
+        print("Not removable cycles and reasons:\n")
+        for i, (comp, reason) in enumerate(nonrem, 1):
+            print(f"{i}) {' '.join(sort_comp(comp))}")
+            if "has_explicit" in reason:
+                print(f"   Contains explicitly installed packages: {' '.join(reason['has_explicit'])}")
+            if "incoming_from_outside" in reason:
+                for node, parents in sorted(reason["incoming_from_outside"].items()):
+                    print(f"   {node} is required by (outside SCC): {' '.join(parents)}")
+            print()
+
+if __name__ == "__main__":
+    main()
